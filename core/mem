@@ -1,0 +1,15 @@
+#!/bin/bash
+# mem — agent-memory CLI wrapper
+# Runs mem.py with the virtual environment if available, or system Python.
+#
+# Environment:
+#   AGENT_MEMORY_DB  Path to memories.db (default: ./memories.db)
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Use venv if it exists
+if [ -f "$DIR/.venv/bin/activate" ]; then
+  source "$DIR/.venv/bin/activate"
+fi
+
+exec python3 "$DIR/mem.py" "$@"

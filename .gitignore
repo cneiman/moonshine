@@ -1,0 +1,8 @@
+memories.db
+observations.db
+node_modules/
+*.db-journal
+*.db-wal
+*.db-shm
+__pycache__/
+.env*
