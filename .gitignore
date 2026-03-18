@@ -6,3 +6,4 @@ node_modules/
 *.db-shm
 __pycache__/
 .env*
+__pycache__/
