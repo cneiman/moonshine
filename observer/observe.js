@@ -17,7 +17,7 @@
  *   OBSERVER_DB        Path to observations.db (default: ./observations.db)
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -35,10 +35,18 @@ function getApiKey() {
 
   // 2. ~/.env.anthropic
   try {
-    const envFile = readFileSync(join(process.env.HOME, '.env.anthropic'), 'utf8');
+    const keyPath = join(process.env.HOME, '.env.anthropic');
+    const stats = statSync(keyPath);
+    const mode = stats.mode & 0o777;
+    if (mode & 0o077) {
+      console.error(`[observer] WARNING: ${keyPath} is accessible by other users (mode: ${mode.toString(8)}). Run: chmod 600 ${keyPath}`);
+    }
+    const envFile = readFileSync(keyPath, 'utf8');
     const match = envFile.match(/ANTHROPIC_API_KEY=(.+)/);
     if (match) return match[1].trim();
-  } catch { /* ignore */ }
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.error(`[observer] Warning reading ~/.env.anthropic: ${err.message}`);
+  }
 
   throw new Error('No Anthropic API key found. Set ANTHROPIC_API_KEY or add to ~/.env.anthropic');
 }

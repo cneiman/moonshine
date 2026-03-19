@@ -188,7 +188,7 @@ When you learn something important, use memory_save to persist it.
 Use memory_search when you need to recall past decisions or context.
 ```
 
-You can start with the template at `adapters/cursor/cursorrules-snippet.md`.
+See the example rules above.
 
 **3. MEMORY.md:**
 
@@ -305,7 +305,7 @@ The default is Claude Haiku (fast, cheap, good at structured extraction). You ca
 ```bash
 # In observer/observe.js and observer/reflect.js
 # Change the MODEL constant:
-const MODEL = 'claude-haiku-4-5-20251001';  # default
+const MODEL = 'claude-haiku-4-5';  # default
 ```
 
 Any model that handles structured JSON extraction works. Haiku-class models are recommended for cost reasons — the observer fires frequently.
@@ -329,11 +329,13 @@ Higher thresholds = fewer LLM calls = lower cost, but coarser observation granul
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `MOONSHINE_DB` | Path to memories.db | `./core/memories.db` |
-| `AGENT_MEMORY_OBSERVER_DB` | Path to observations.db | `./observer/observations.db` |
+| `MOONSHINE_DB` | Path to memories.db | `./memories.db` |
+| `OBSERVER_DB` | Path to observations.db | `./observer/observations.db` |
 | `ANTHROPIC_API_KEY` | API key for observer LLM calls | (none — required for observer) |
+| `OBSERVER_MODEL` | Model for observer/reflector LLM calls | `claude-haiku-4-5` |
 | `OLLAMA_URL` | Ollama API endpoint | `http://127.0.0.1:11434` |
-| `OLLAMA_EMBED_MODEL` | Embedding model name | `nomic-embed-text` |
+| `EMBED_MODEL` | Embedding model name | `nomic-embed-text` |
+| `MOONSHINE_RERANK` | Enable cross-encoder reranking | (none) |
 | `AGENT_MEMORY_WATCH_DIR` | Directory for generic file watcher | (none) |
 
 ---

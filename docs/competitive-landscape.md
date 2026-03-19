@@ -585,13 +585,13 @@ Tests long-term memory retrieval across temporal, multi-hop, and knowledge-updat
 | Zep | 71.2% | GPT-4o (63.8% with GPT-4o-mini), strong on temporal |
 | Mem0 | 49.0% | Independent eval (arxiv 2603.04814) |
 | Letta | Not published | — |
-| moonshine | 100% internal | 16 promptfoo test cases (not LongMemEval) |
+| moonshine | 78.0% | Claude Sonnet (this repo, evals/longmemeval) |
 
 **Important caveats:**
 - LongMemEval only tests conversational data — doesn't evaluate agent workflow memory
 - Mastra's 95% is self-reported and uses a different approach (compression, not retrieval)
 - The benchmark is "increasingly saturated" per Vectorize.io's own admission
-- moonshine's 16-test eval suite measures different things (retrieval from its own format)
+- moonshine's 78.0% is from its own LongMemEval implementation (evals/longmemeval) using Claude Sonnet
 
 ### LoCoMo
 Another de facto standard for conversational memory evaluation. Similar scope limitations.
@@ -657,7 +657,7 @@ Growing demand for self-hosted, fully local memory systems. Hindsight + Ollama, 
 - **MCP server with 9 tools** — Rich tool surface matching or exceeding most competitors.
 - **Fully local** — Ollama embeddings, SQLite storage, no cloud dependency. Matches the privacy-first trend.
 - **Auto-extraction** — Nightly cron scans daily files → imports to SQLite. Hybrid approach (auto + manual `mem add`).
-- **Eval suite** — 16 promptfoo test cases, 100% pass rate, weekly cron. More than most competitors ship.
+- **Eval suite** — 78.0% on LongMemEval (Claude Sonnet), plus 16 promptfoo test cases. Credible benchmark alongside competitors.
 
 **Unique differentiators:**
 1. **File-based hot tier** — MEMORY.md and CONTEXT.md as human-readable, git-trackable memory. This is the exact pattern Claude Code, GitHub Copilot, and the "files are all you need" movement are converging on. moonshine was doing this before it was trendy.
@@ -674,7 +674,6 @@ Growing demand for self-hosted, fully local memory systems. Hindsight + Ollama, 
 | **No TypeScript SDK** | Mem0 (JS), Hindsight (TS/Go/Py), Mastra (TS) | Medium |
 | **No temporal reasoning** | Zep/Graphiti (first-class temporal) | Medium |
 | **No cross-encoder reranking** | Hindsight | Medium-High |
-| **No LongMemEval benchmark** | Hindsight (91.4%), Zep (71.2%), Mem0 (49%) | Medium (for credibility) |
 | **No multi-modal support** | Cognee (images, audio, 30+ sources) | Low |
 | **No synthesis/reflect operation** | Hindsight (`reflect` operation) | Medium |
 | **No visual debugging tooling** | Letta (ADE) | Low |
@@ -701,7 +700,7 @@ Growing demand for self-hosted, fully local memory systems. Hindsight + Ollama, 
 **If improving for personal use, priorities:**
 1. Add cross-encoder reranking to improve retrieval quality
 2. Add temporal metadata to memories (valid_from, valid_until)
-3. Run against LongMemEval for credible benchmark score
+3. Improve LongMemEval score beyond 78.0% (currently between Zep 71.2% and Hindsight 91.4%)
 4. Consider a `reflect` operation (synthesize across memories via LLM)
 5. Improve knowledge graph with relationship type inference
 

@@ -7,8 +7,11 @@
  */
 
 import Database from 'better-sqlite3';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const DEFAULT_DB_PATH = process.env.OBSERVER_DB || './observations.db';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_DB_PATH = process.env.OBSERVER_DB || join(__dirname, 'observations.db');
 
 /**
  * Open (and initialize if needed) the observations database.

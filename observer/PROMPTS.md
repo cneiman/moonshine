@@ -44,5 +44,5 @@ Using Claude Haiku 3.5:
 To change the model, set `OBSERVER_MODEL` environment variable:
 ```bash
 export OBSERVER_MODEL=claude-haiku-4-5  # default
-export OBSERVER_MODEL=claude-sonnet-4-5 # higher quality, higher cost
+export OBSERVER_MODEL=claude-sonnet-4-6 # higher quality, higher cost
 ```
