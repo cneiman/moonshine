@@ -33,12 +33,12 @@ def db_with_data(db):
     memories = [
         ("event", "Deployed moonshine v1", "First production deployment of the moonshine memory system", '["moonshine","deploy"]', 5, "session:2026-03-01", "2026-03-01"),
         ("lesson", "FTS5 needs triggers for sync", "Discovered that FTS5 virtual tables require explicit sync triggers on INSERT/UPDATE/DELETE", '["sqlite","fts5"]', 4, "session:2026-02-15", "2026-02-15"),
-        ("person", "Christopher Neiman", "Senior engineer, moonshine creator. Uses Claude Code extensively.", '["engineer","ai"]', 5, "manual", "2026-01-01"),
+        ("person", "Alex Chen", "Senior engineer, moonshine creator. Uses Claude Code extensively.", '["engineer","ai"]', 5, "manual", "2026-01-01"),
         ("insight", "Semantic search needs relevance floor", "Without a minimum cosine similarity threshold, semantic search returns noise. 0.35 works well for nomic-embed-text.", '["search","embeddings"]', 4, "session:2026-02-19", "2026-02-19"),
         ("decision", "Use SQLite over Postgres", "Chose SQLite for moonshine because it's zero-dependency and file-based, perfect for single-agent use.", '["architecture","database"]', 4, "session:2026-02-10", "2026-02-10"),
         ("project", "Moonshine memory system", "3-tier memory architecture: MEMORY.md (hot), CONTEXT.md (warm), memories.db (cold archive).", '["moonshine","memory"]', 5, "manual", "2026-02-11"),
         ("skill", "Python SQLite patterns", "Using sqlite3.Row for dict-like access, parameterized queries, WAL mode for concurrency.", '["python","sqlite"]', 3, "session:2026-02-12", "2026-02-12"),
-        ("behavior", "Christopher prefers direct communication", "No corporate fluff. Action over asking permission for internal stuff.", '["preferences"]', 4, "manual", "2026-01-15"),
+        ("behavior", "Alex prefers direct communication", "No corporate fluff. Action over asking permission for internal stuff.", '["preferences"]', 4, "manual", "2026-01-15"),
         ("preference", "Trash over rm", "Always use trash command instead of rm for recoverability.", '["safety","cli"]', 3, "manual", "2026-01-20"),
         ("insight", "Cross-encoder reranking improves precision", "Adding a cross-encoder reranking step after initial retrieval significantly improves result quality.", '["search","reranker"]', 4, "session:2026-03-15", "2026-03-15"),
     ]
@@ -51,7 +51,7 @@ def db_with_data(db):
 
     # Add entities
     entities = [
-        ("Christopher Neiman", "person", '["christopher", "neiman"]', "2026-01-01", "2026-03-15"),
+        ("Alex Chen", "person", '["alex", "chen"]', "2026-01-01", "2026-03-15"),
         ("Moonshine", "project", '["moonshine"]', "2026-02-11", "2026-03-15"),
         ("SQLite", "tool", '["sqlite", "sqlite3"]', "2026-02-10", "2026-03-01"),
         ("Claude Code", "tool", '["claude-code", "claude"]', "2026-01-01", "2026-03-10"),
@@ -67,7 +67,7 @@ def db_with_data(db):
     # Link some entities to memories
     links = [
         (1, 2, "subject", 1.0),   # Deployed moonshine -> Moonshine
-        (3, 1, "subject", 1.0),   # Christopher -> Christopher Neiman
+        (3, 1, "subject", 1.0),   # Alex -> Alex Chen
         (4, 3, "mention", 0.9),   # Semantic search -> SQLite (mention)
         (5, 3, "subject", 1.0),   # Use SQLite -> SQLite
         (6, 2, "subject", 1.0),   # Moonshine project -> Moonshine

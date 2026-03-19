@@ -195,6 +195,47 @@ Spreading activation traverses the graph from seed entities, decaying signal wit
 
 ---
 
+## Benchmarks
+
+Tested against [LongMemEval](https://github.com/xiaowu0162/LongMemEval), a 500-question benchmark covering multi-session conversational memory across 6 categories.
+
+**78.0% accuracy** (389/499, LLM-judged with Claude Sonnet)
+
+| Category | Accuracy | n |
+|----------|----------|---|
+| Single-session (assistant) | 98.2% | 56 |
+| Single-session (user) | 92.9% | 70 |
+| Knowledge update | 88.5% | 78 |
+| Multi-session | 72.7% | 132 |
+| Temporal reasoning | 67.7% | 133 |
+| Preference inference | 46.7% | 30 |
+
+**How that compares** (all LongMemEval accuracy, published scores):
+
+| System | Accuracy | Reader Model | Source |
+|--------|----------|-------------|--------|
+| Mem0 | 49.0% | GPT-5-nano/mini | [arXiv 2603.04814](https://arxiv.org/abs/2603.04814) |
+| Full-context (no memory system) | 60.2% | GPT-4o | [Zep blog](https://blog.getzep.com/state-of-the-art-agent-memory/) |
+| Zep | 71.2% | GPT-4o | [Zep blog](https://blog.getzep.com/state-of-the-art-agent-memory/) |
+| **moonshine** | **78.0%** | Claude Sonnet | This repo |
+| Mastra OM | 84.2% | GPT-4o | [Mastra research](https://mastra.ai/research/observational-memory) |
+| Hindsight | 91.4% | Gemini 3 Pro | [arXiv 2512.12818](https://arxiv.org/abs/2512.12818) |
+
+**Notes:**
+- moonshine runs entirely local (SQLite + Ollama embeddings) with no cloud memory service
+- Scores use different reader models — not a perfectly controlled comparison
+- Preference inference is the weakest category; the others average 84%
+- Search pipeline: FTS5 + semantic search + cross-encoder reranking + temporal reasoning
+
+Eval harness and data are in `evals/longmemeval/`. Full reproduction:
+```bash
+cd evals/longmemeval
+node harness.js --dataset oracle          # Generate answers
+node evaluate.js hypotheses-oracle.jsonl  # Score with LLM judge
+```
+
+---
+
 ## Platform Support
 
 | Platform | Adapter | How it connects |
@@ -234,9 +275,30 @@ moonshine/
 
 ---
 
-## Eval Suite
+## Testing
 
-Memory quality matters more than memory quantity. The eval suite uses [promptfoo](https://promptfoo.dev/) to test that searches return the right memories — not just that the system runs.
+**127 tests** across the core system:
+
+```bash
+cd core/
+python -m pytest -v           # Run all 127 tests
+python -m pytest test_schema.py  # Just schema tests (31)
+```
+
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| Schema | 31 | Table creation, FTS5, CRUD, entities, edges, cascades |
+| Search | 15 | Keyword search, filters, ranking, special characters |
+| MCP Server | 15 | JSON-RPC protocol, all 9 tools, error handling |
+| Reranker | 11 | Scoring, sorting, topK, graceful fallback |
+| Integration | 12 | Full save→search→retrieve pipeline, knowledge graph |
+| Temporal | 43 | Date parsing, arithmetic, filtering |
+
+All tests use temporary SQLite databases — no external services required.
+
+### Retrieval Eval Suite
+
+The retrieval eval suite uses [promptfoo](https://promptfoo.dev/) to test that searches return the right memories:
 
 ```bash
 cd evals/
@@ -244,7 +306,7 @@ npx promptfoo eval    # Run retrieval tests
 npx promptfoo view    # View results in browser
 ```
 
-Test cases cover: people queries, project lookups, temporal questions, semantic similarity, acronym expansion, and graph traversal. Add your own by editing `promptfooconfig.yaml`.
+Test cases cover: people queries, project lookups, temporal questions, semantic similarity, acronym expansion, and graph traversal.
 
 ---
 
