@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+core/.venv/
+.tmp-eval.db*
+node_modules/

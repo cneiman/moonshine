@@ -18,6 +18,7 @@ const require = createRequire(import.meta.url);
 const Database = require("better-sqlite3");
 
 import { readFileSync, appendFileSync, existsSync, unlinkSync } from "fs";
+import { execSync } from "child_process";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -26,7 +27,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── CLI Args ────────────────────────────────────────────────────────────────
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { dataset: "oracle", start: 0, limit: Infinity, output: null, model: null };
+  const opts = {
+    dataset: "oracle",
+    start: 0,
+    limit: Infinity,
+    output: null,
+    model: null,
+    search: "hybrid",
+    temporal: false,
+    rerank: false,
+  };
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
       case "--dataset":
@@ -44,6 +54,15 @@ function parseArgs() {
       case "--model":
         opts.model = args[++i];
         break;
+      case "--search":
+        opts.search = args[++i];
+        break;
+      case "--temporal":
+        opts.temporal = true;
+        break;
+      case "--rerank":
+        opts.rerank = true;
+        break;
       case "--help":
         console.log(`
 LongMemEval Harness
@@ -53,6 +72,9 @@ LongMemEval Harness
   --limit N            Process at most N questions
   --output FILE        Output JSONL file (default: hypotheses-{dataset}.jsonl)
   --model MODEL        Anthropic model for answering (default: claude-opus-4-6 or EVAL_MODEL env)
+  --search MODE        Search mode: fts|semantic|hybrid (default: hybrid)
+  --temporal           Enable temporal filtering on queries
+  --rerank             Enable cross-encoder reranking
   --help               Show this help
 `);
         process.exit(0);
@@ -204,6 +226,42 @@ function sanitizeFtsQuery(query) {
   return words.join(" OR ");
 }
 
+// ── Pipeline Search (via search_helper.py) ──────────────────────────────
+const SEARCH_HELPER = join(__dirname, "search_helper.py");
+
+function searchWithPipeline(dbPath, query, opts, questionDate) {
+  const args = [
+    SEARCH_HELPER,
+    dbPath,
+    query,
+    "--search", opts.search,
+    "--limit", "20",
+  ];
+  if (opts.temporal) args.push("--temporal");
+  if (opts.rerank) args.push("--rerank");
+  if (questionDate) args.push("--question-date", questionDate);
+
+  try {
+    const stdout = execSync(`python3 ${args.map(a => JSON.stringify(a)).join(" ")}`, {
+      encoding: "utf8",
+      timeout: 120_000, // 2 min — embedding can be slow on first run
+      maxBuffer: 10 * 1024 * 1024,
+      env: {
+        ...process.env,
+        MOONSHINE_RERANK: opts.rerank ? "true" : "false",
+      },
+    });
+    // search_helper prints JSON to stdout, diagnostics to stderr
+    const lines = stdout.trim().split("\n");
+    const jsonLine = lines[lines.length - 1]; // last line is the JSON
+    return JSON.parse(jsonLine);
+  } catch (err) {
+    console.error(`  Pipeline search failed: ${err.message}`);
+    console.error("  Falling back to inline FTS...");
+    return null; // caller will fall back to searchFTS
+  }
+}
+
 // ── Anthropic API ───────────────────────────────────────────────────────────
 async function callAnthropic(apiKey, model, system, userMessage) {
   const maxRetries = 3;
@@ -291,7 +349,10 @@ async function main() {
   console.log(
     `Processing questions ${opts.start} to ${end - 1} (${questions.length} questions)`
   );
+  const usePipeline = opts.search !== "fts" || opts.temporal || opts.rerank;
   console.log(`Model: ${model}`);
+  console.log(`Search: ${opts.search}${opts.temporal ? " +temporal" : ""}${opts.rerank ? " +rerank" : ""}`);
+  console.log(`Pipeline: ${usePipeline ? "search_helper.py" : "inline FTS"}`);
   console.log(`Output: ${outputFile}`);
   console.log("─".repeat(60));
 
@@ -324,11 +385,22 @@ async function main() {
         q.haystack_session_ids
       );
 
-      // 3. Search
-      const results = searchFTS(db, q.question, 20);
-
-      // 4. Close DB before API call
-      db.close();
+      // 3. Search — use pipeline or inline FTS
+      let results;
+      if (usePipeline) {
+        // Close DB first so Python can open it
+        db.close();
+        results = searchWithPipeline(tmpDbPath, q.question, opts, q.question_date);
+        if (!results) {
+          // Pipeline failed — reopen DB and fall back to FTS
+          const fallbackDb = new Database(tmpDbPath);
+          results = searchFTS(fallbackDb, q.question, 20);
+          fallbackDb.close();
+        }
+      } else {
+        results = searchFTS(db, q.question, 20);
+        db.close();
+      }
 
       // 5. Build context from search results
       let context;
