@@ -15,6 +15,13 @@ else
   echo "⏭️  memories.db already exists"
 fi
 
+# Install Python dependencies
+echo "Installing Python dependencies..."
+pip3 install requests 2>/dev/null || pip install requests 2>/dev/null || echo "⚠️  Could not install 'requests' — install manually: pip3 install requests"
+
+# Make mem CLI executable
+chmod +x core/mem
+
 # Install observer dependencies
 if [ -d observer ]; then
   echo "Installing observer dependencies..."

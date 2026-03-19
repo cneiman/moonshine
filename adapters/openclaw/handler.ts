@@ -13,6 +13,7 @@
 
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 
 // --- Configuration ---
 const MAX_CONTENT_LENGTH = 2000;
@@ -89,10 +90,7 @@ function getDb() {
 
 // --- UUID generation ---
 function uuid(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-  });
+  return randomUUID();
 }
 
 // --- Message capture ---

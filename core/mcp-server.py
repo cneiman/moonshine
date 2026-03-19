@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Memory MCP Server — Exposes Goober's long-term memory as MCP tools.
+Memory MCP Server — Exposes moonshine long-term memory as MCP tools.
 
 Tools:
   - memory_context: Load relevant memories for current session (call at start)
@@ -20,11 +20,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+import logging
 import requests
+
+logger = logging.getLogger("moonshine.mcp")
 
 # ============ Config ============
 
-DB_PATH = Path(__file__).parent / "memories.db"
+DB_PATH = Path(os.environ.get("MOONSHINE_DB", str(Path(__file__).parent / "memories.db")))
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 OLLAMA_URL = "http://127.0.0.1:11434"
 EMBED_MODEL = "nomic-embed-text"
@@ -84,11 +87,21 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
 
 # ============ Tool Implementations ============
 
+def _clamp_int(params: dict, key: str, default: int, lo: int, hi: int) -> int:
+    """Extract and clamp an integer parameter to [lo, hi]."""
+    val = params.get(key, default)
+    try:
+        val = int(val)
+    except (TypeError, ValueError):
+        val = default
+    return max(lo, min(val, hi))
+
+
 def tool_memory_context(params: dict) -> str:
     """Load relevant context for session start. Returns recent + important memories."""
     conn = get_db()
     project = params.get("project", "")
-    limit = params.get("limit", 20)
+    limit = _clamp_int(params, "limit", 20, 1, 100)
     
     results = []
     
@@ -107,15 +120,15 @@ def tool_memory_context(params: dict) -> str:
     
     # 2. Recent memories (last 7 days)
     week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-    rows = conn.execute("""
+    placeholders = ','.join('?' * len(seen_ids)) if seen_ids else '0'
+    rows = conn.execute(f"""
         SELECT id, type, title, content, importance, source_date, tags
         FROM memories
         WHERE (source_date >= ? OR created_at >= ?)
-        AND id NOT IN ({})
+        AND id NOT IN ({placeholders})
         ORDER BY source_date DESC
         LIMIT ?
-    """.format(','.join(str(i) for i in seen_ids) or '0'), 
-        (week_ago, week_ago, limit)).fetchall()
+    """, (week_ago, week_ago, *list(seen_ids), limit)).fetchall()
     
     for r in rows:
         results.append(dict(r))
@@ -126,12 +139,13 @@ def tool_memory_context(params: dict) -> str:
         embedding = get_embedding(project)
         if embedding:
             query_vec = unpack_embedding(embedding)
-            emb_rows = conn.execute("""
+            placeholders2 = ','.join('?' * len(seen_ids)) if seen_ids else '0'
+            emb_rows = conn.execute(f"""
                 SELECT m.id, m.type, m.title, m.content, m.importance, m.source_date, m.tags, e.embedding
                 FROM memories m
                 JOIN embeddings e ON m.id = e.memory_id
-                WHERE m.id NOT IN ({})
-            """.format(','.join(str(i) for i in seen_ids) or '0')).fetchall()
+                WHERE m.id NOT IN ({placeholders2})
+            """, list(seen_ids) if seen_ids else []).fetchall()
             
             scored = []
             for row in emb_rows:
@@ -187,7 +201,7 @@ def tool_memory_search(params: dict) -> str:
     query = params.get("query", "")
     semantic = params.get("semantic", True)
     mem_type = params.get("type")
-    limit = params.get("limit", 10)
+    limit = _clamp_int(params, "limit", 10, 1, 100)
     spread = params.get("spread", False)
     # Explicit temporal overrides from params
     param_after = params.get("after")
@@ -344,7 +358,7 @@ def tool_memory_save(params: dict) -> str:
     title = params.get("title", "")
     content = params.get("content", "")
     mem_type = params.get("type", "insight")
-    importance = params.get("importance", 3)
+    importance = _clamp_int(params, "importance", 3, 1, 5)
     tags = params.get("tags", [])
     source = params.get("source", "")
     source_date = params.get("source_date", datetime.now().strftime('%Y-%m-%d'))
@@ -397,8 +411,8 @@ def tool_memory_save(params: dict) -> str:
             if entity_ids:
                 auto_create_edges(conn, memory_id, entity_ids)
             entity_names = [e["name"] for e in entities]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Entity extraction failed: {e}")
     
     conn.commit()
     ent_str = f", entities: {', '.join(entity_names)}" if entity_names else ""
@@ -409,7 +423,7 @@ def tool_memory_briefing(params: dict) -> str:
     """Structured session briefing — no LLM, just aggregation."""
     conn = get_db()
     context = params.get("context", "")
-    limit = params.get("limit", 10)
+    limit = _clamp_int(params, "limit", 10, 1, 50)
     
     sections = {}
     
@@ -487,7 +501,7 @@ def tool_memory_surface(params: dict) -> str:
     conn = get_db()
     context = params.get("context", "")
     exclude_ids = params.get("exclude_ids", [])
-    limit = params.get("limit", 5)
+    limit = _clamp_int(params, "limit", 5, 1, 50)
     
     if not context:
         return "Error: context is required"
@@ -509,15 +523,15 @@ def tool_memory_surface(params: dict) -> str:
         if not row:
             continue
         
-        memories = conn.execute("""
+        seen_placeholders = ','.join('?' * len(seen)) if seen else '0'
+        memories = conn.execute(f"""
             SELECT m.id, m.type, m.title, m.content, m.importance, m.source_date
             FROM memories m
             JOIN memory_entities me ON m.id = me.memory_id
-            WHERE me.entity_id = ? AND m.id NOT IN ({})
+            WHERE me.entity_id = ? AND m.id NOT IN ({seen_placeholders})
             ORDER BY m.importance DESC, m.created_at DESC
             LIMIT ?
-        """.format(','.join(str(i) for i in seen) if seen else '0'),
-            (row['id'], limit)).fetchall()
+        """, (row['id'], *list(seen), limit)).fetchall()
         
         for m in memories:
             if m['id'] not in seen:
@@ -547,7 +561,7 @@ def tool_memory_entities(params: dict) -> str:
     conn = get_db()
     name = params.get("name")
     etype = params.get("type")
-    limit = params.get("limit", 20)
+    limit = _clamp_int(params, "limit", 20, 1, 100)
     
     if name:
         rows = conn.execute(
@@ -579,7 +593,11 @@ def tool_memory_connect(params: dict) -> str:
     source_id = params.get("source_id")
     target_id = params.get("target_id")
     edge_type = params.get("edge_type", "relates_to")
-    weight = params.get("weight", 1.0)
+    raw_weight = params.get("weight", 1.0)
+    try:
+        weight = max(0.0, min(float(raw_weight), 1.0))
+    except (TypeError, ValueError):
+        weight = 1.0
     
     valid_types = ['relates_to', 'contradicts', 'supersedes', 'caused_by', 'follow_up']
     if edge_type not in valid_types:
@@ -604,7 +622,7 @@ def tool_memory_neighbors(params: dict) -> str:
     """Get graph neighbors of a memory."""
     conn = get_db()
     memory_id = params.get("memory_id")
-    depth = min(params.get("depth", 1), 3)
+    depth = _clamp_int(params, "depth", 1, 1, 3)
     edge_types = params.get("edge_types")
     
     row = conn.execute("SELECT id, title FROM memories WHERE id = ?", (memory_id,)).fetchone()
@@ -921,7 +939,7 @@ TOOLS = [
 ]
 
 SERVER_INFO = {
-    "name": "goober-memory",
+    "name": "moonshine-memory",
     "version": "1.0.0"
 }
 

@@ -3,7 +3,7 @@
 # Runs mem.py with the virtual environment if available, or system Python.
 #
 # Environment:
-#   AGENT_MEMORY_DB  Path to memories.db (default: ./memories.db)
+#   MOONSHINE_DB     Path to memories.db (default: ./memories.db)
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 

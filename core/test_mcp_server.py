@@ -97,7 +97,7 @@ class TestMCPProtocol:
         assert "result" in response
         assert response["result"]["protocolVersion"] == "2024-11-05"
         assert "serverInfo" in response["result"]
-        assert response["result"]["serverInfo"]["name"] == "goober-memory"
+        assert response["result"]["serverInfo"]["name"] == "moonshine-memory"
 
     def test_tools_list(self, simple_mcp):
         response = simple_mcp.handle_request({

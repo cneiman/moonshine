@@ -57,6 +57,7 @@ def get_db() -> sqlite3.Connection:
     db_exists = DB_PATH.exists()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
 
     if not db_exists:
         with open(SCHEMA_PATH) as f:
@@ -129,8 +130,8 @@ def extract_entities(content: str, title: str, tags: str) -> list[dict]:
                         "role": "mention", "confidence": 0.9
                     }
                     break
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: entity DB lookup failed: {e}", file=sys.stderr)
 
     # Determine role: if entity appears in title, it's more likely the subject
     title_lower = title.lower()
@@ -473,14 +474,21 @@ def cmd_search(args):
 
         if len(fts_results) < args.limit:
             like_query = f"%{args.query}%"
-            existing_ids = {r['id'] for _, r in fts_results}
+            existing_ids = list({r['id'] for _, r in fts_results})
+            if existing_ids:
+                placeholders = ','.join('?' * len(existing_ids))
+                not_in_clause = f"AND m.id NOT IN ({placeholders})"
+            else:
+                placeholders = ''
+                not_in_clause = "AND m.id NOT IN (SELECT NULL WHERE 0)"
+                existing_ids = []
             like_sql = """
                 SELECT m.*, NULL as rank
                 FROM memories m
                 WHERE (m.content LIKE ? OR m.title LIKE ? OR m.tags LIKE ?)
-                AND m.id NOT IN ({})
-            """.format(','.join(str(i) for i in existing_ids) if existing_ids else '0')
-            like_params = [like_query, like_query, like_query]
+                {}
+            """.format(not_in_clause)
+            like_params = [like_query, like_query, like_query] + existing_ids
             if args.type:
                 like_sql += " AND m.type = ?"
                 like_params.append(args.type)
@@ -745,8 +753,8 @@ def cmd_stats(args):
         print(f"Graph edges: {edges_total}")
         for row in edges_by_type:
             print(f"  {row['edge_type']}: {row['cnt']}")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: entity stats unavailable: {e}", file=sys.stderr)
 
 
 def cmd_export(args):

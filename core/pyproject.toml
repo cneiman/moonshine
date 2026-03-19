@@ -1,3 +1,17 @@
+[project]
+name = "moonshine"
+version = "1.0.0"
+description = "Locally distilled memory for AI agents"
+requires-python = ">=3.9"
+dependencies = [
+    "requests",
+]
+
+[project.optional-dependencies]
+rerank = [
+    "sentence-transformers",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["."]
 python_files = ["test_*.py"]
