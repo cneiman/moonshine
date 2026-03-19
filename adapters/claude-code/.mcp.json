@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "moonshine": {
+      "command": "python3",
+      "args": ["core/mcp-server.py"],
+      "env": {
+        "MOONSHINE_DB": "./memories.db",
+        "MOONSHINE_WORKSPACE": "./"
+      }
+    }
+  }
+}

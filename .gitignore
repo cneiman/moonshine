@@ -1,5 +1,9 @@
-__pycache__/
-*.pyc
-core/.venv/
-.tmp-eval.db*
+memories.db
+observations.db
 node_modules/
+*.db-journal
+*.db-wal
+*.db-shm
+__pycache__/
+.env*
+__pycache__/

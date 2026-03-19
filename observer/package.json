@@ -1,0 +1,10 @@
+{
+  "name": "moonshine-observer",
+  "version": "1.0.0",
+  "description": "Observer pipeline for automatic conversation compression",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "better-sqlite3": "^11.0.0"
+  }
+}
