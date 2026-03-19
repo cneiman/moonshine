@@ -231,7 +231,7 @@ Letta is a fundamentally different scope — it's an agent runtime, not a memory
 - **Temporal knowledge graph** — can answer "who was the project lead in January?" differently from "who is the project lead now?"
 - Graph traversal + vector similarity combined
 - Structured business data integration with conversational history
-- **63.8% on LongMemEval** (GPT-4o), with strong temporal reasoning scores
+- **71.2% on LongMemEval** (GPT-4o); 63.8% with GPT-4o-mini. Strong temporal reasoning scores
 
 #### Auto-capture vs Manual
 - **Automatic decomposition** — episodes are ingested and automatically broken into entities, edges, and temporal facts. No model decision required.
@@ -582,7 +582,7 @@ Tests long-term memory retrieval across temporal, multi-hop, and knowledge-updat
 |--------|-------|-------|
 | Hindsight | 91.4% | Highest published (arxiv 2512.12818) |
 | Mastra OM | 95% | Self-reported on research page |
-| Zep | 63.8% | GPT-4o, strong on temporal |
+| Zep | 71.2% | GPT-4o (63.8% with GPT-4o-mini), strong on temporal |
 | Mem0 | 49.0% | Independent eval (arxiv 2603.04814) |
 | Letta | Not published | — |
 | moonshine | 100% internal | 16 promptfoo test cases (not LongMemEval) |
@@ -674,7 +674,7 @@ Growing demand for self-hosted, fully local memory systems. Hindsight + Ollama, 
 | **No TypeScript SDK** | Mem0 (JS), Hindsight (TS/Go/Py), Mastra (TS) | Medium |
 | **No temporal reasoning** | Zep/Graphiti (first-class temporal) | Medium |
 | **No cross-encoder reranking** | Hindsight | Medium-High |
-| **No LongMemEval benchmark** | Hindsight (91.4%), Zep (63.8%), Mem0 (49%) | Medium (for credibility) |
+| **No LongMemEval benchmark** | Hindsight (91.4%), Zep (71.2%), Mem0 (49%) | Medium (for credibility) |
 | **No multi-modal support** | Cognee (images, audio, 30+ sources) | Low |
 | **No synthesis/reflect operation** | Hindsight (`reflect` operation) | Medium |
 | **No visual debugging tooling** | Letta (ADE) | Low |
