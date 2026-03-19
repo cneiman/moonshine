@@ -12,7 +12,7 @@
  *   node evaluate.js hypotheses-oracle.jsonl --dataset s --judge anthropic
  */
 
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, appendFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 

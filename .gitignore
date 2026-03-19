@@ -6,4 +6,9 @@ node_modules/
 *.db-shm
 __pycache__/
 .env*
-__pycache__/
+.venv/
+*.log
+*.jsonl
+evals/*/data/
+evals/locomo/task_eval/
+evals/memoryagentbench/cognee/
