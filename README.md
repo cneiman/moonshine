@@ -12,14 +12,14 @@ Works with Claude Code, OpenClaw, Cursor, or anything MCP-compatible. SQLite-bas
 │                                                                  │
 │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────┐  │
 │  │  MEMORY.md     │  │  CONTEXT.md    │  │  memories.db       │  │
-│  │  🔴 Hot        │  │  🟡 Warm       │  │  🔵 Cold           │  │
+│  │  🔴 Hot        |  |  🟡 Warm        │  │  🔵 Cold           │  │
 │  │  ~6-8K chars   │  │  ~4K chars     │  │  unlimited         │  │
 │  │  always        │  │  auto-gen      │  │  on-demand         │  │
 │  │  injected      │  │  zero LLM $    │  │  MCP tools         │  │
 │  └───────┬────────┘  └───────┬────────┘  └─────────┬──────────┘  │
-│          └──────────────┬────┘                      │            │
-│                         ▼                           │            │
-│                Context Preamble ◄───────────────────┘            │
+│          └──────────────┬────┘                     │             │
+│                         ▼                          │             │
+│                Context Preamble ◄──────────────────┘             │
 │                         │                                        │
 │                         ▼                                        │
 │                   Agent Response                                 │
@@ -75,13 +75,13 @@ Every message ──► stored permanently
                       │
                       ▼ (token threshold crossed)
                  ┌──────────┐
-                 │ Observer  │ ──► structured observations
-                 │ (Haiku)   │     (priority, type, entities)
+                 │ Observer │ ──► structured observations
+                 │ (Haiku)  │     (priority, type, entities)
                  └────┬─────┘
                       ▼ (observations accumulate)
                  ┌──────────┐
-                 │ Reflector │ ──► condensed observations
-                 │ (Haiku)   │     (generation counter tracks durability)
+                 │ Reflector│ ──► condensed observations
+                 │ (Haiku)  │     (generation counter tracks durability)
                  └──────────┘
 ```
 
