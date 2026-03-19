@@ -53,6 +53,16 @@ python3 core/mcp-server.py
 
 The MCP server communicates over stdio. Any MCP-compatible client can connect to it — see the [MCP spec](https://modelcontextprotocol.io/) for details.
 
+## Dependencies
+
+The watcher uses `better-sqlite3` from the observer's `node_modules/`. Make sure the observer dependencies are installed:
+
+```bash
+cd observer && npm install && cd ..
+```
+
+If the observer isn't installed, the watcher still runs — it logs messages to the console but won't persist them to the database or trigger the observer pipeline.
+
 ## Requirements
 
 - Node.js 18+

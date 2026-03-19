@@ -97,6 +97,14 @@ def _clamp_int(params: dict, key: str, default: int, lo: int, hi: int) -> int:
     return max(lo, min(val, hi))
 
 
+def _not_in_clause(ids: set, prefix: str = "id") -> tuple[str, list]:
+    """Build a parameterized NOT IN clause, or empty string if no IDs to exclude."""
+    if not ids:
+        return "", []
+    placeholders = ','.join('?' * len(ids))
+    return f"AND {prefix} NOT IN ({placeholders})", list(ids)
+
+
 def tool_memory_context(params: dict) -> str:
     """Load relevant context for session start. Returns recent + important memories."""
     conn = get_db()
@@ -120,15 +128,15 @@ def tool_memory_context(params: dict) -> str:
     
     # 2. Recent memories (last 7 days)
     week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-    placeholders = ','.join('?' * len(seen_ids)) if seen_ids else '0'
+    excl_clause, excl_params = _not_in_clause(seen_ids)
     rows = conn.execute(f"""
         SELECT id, type, title, content, importance, source_date, tags
         FROM memories
         WHERE (source_date >= ? OR created_at >= ?)
-        AND id NOT IN ({placeholders})
+        {excl_clause}
         ORDER BY source_date DESC
         LIMIT ?
-    """, (week_ago, week_ago, *list(seen_ids), limit)).fetchall()
+    """, (week_ago, week_ago, *excl_params, limit)).fetchall()
     
     for r in rows:
         results.append(dict(r))
@@ -139,13 +147,13 @@ def tool_memory_context(params: dict) -> str:
         embedding = get_embedding(project)
         if embedding:
             query_vec = unpack_embedding(embedding)
-            placeholders2 = ','.join('?' * len(seen_ids)) if seen_ids else '0'
+            excl_clause2, excl_params2 = _not_in_clause(seen_ids, "m.id")
             emb_rows = conn.execute(f"""
                 SELECT m.id, m.type, m.title, m.content, m.importance, m.source_date, m.tags, e.embedding
                 FROM memories m
                 JOIN embeddings e ON m.id = e.memory_id
-                WHERE m.id NOT IN ({placeholders2})
-            """, list(seen_ids) if seen_ids else []).fetchall()
+                WHERE 1=1 {excl_clause2}
+            """, excl_params2).fetchall()
             
             scored = []
             for row in emb_rows:
@@ -523,15 +531,15 @@ def tool_memory_surface(params: dict) -> str:
         if not row:
             continue
         
-        seen_placeholders = ','.join('?' * len(seen)) if seen else '0'
+        excl_clause3, excl_params3 = _not_in_clause(seen, "m.id")
         memories = conn.execute(f"""
             SELECT m.id, m.type, m.title, m.content, m.importance, m.source_date
             FROM memories m
             JOIN memory_entities me ON m.id = me.memory_id
-            WHERE me.entity_id = ? AND m.id NOT IN ({seen_placeholders})
+            WHERE me.entity_id = ? {excl_clause3}
             ORDER BY m.importance DESC, m.created_at DESC
             LIMIT ?
-        """, (row['id'], *list(seen), limit)).fetchall()
+        """, (row['id'], *excl_params3, limit)).fetchall()
         
         for m in memories:
             if m['id'] not in seen:

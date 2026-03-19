@@ -479,15 +479,14 @@ def cmd_search(args):
                 placeholders = ','.join('?' * len(existing_ids))
                 not_in_clause = f"AND m.id NOT IN ({placeholders})"
             else:
-                placeholders = ''
-                not_in_clause = "AND m.id NOT IN (SELECT NULL WHERE 0)"
+                not_in_clause = ""
                 existing_ids = []
-            like_sql = """
+            like_sql = f"""
                 SELECT m.*, NULL as rank
                 FROM memories m
                 WHERE (m.content LIKE ? OR m.title LIKE ? OR m.tags LIKE ?)
-                {}
-            """.format(not_in_clause)
+                {not_in_clause}
+            """
             like_params = [like_query, like_query, like_query] + existing_ids
             if args.type:
                 like_sql += " AND m.type = ?"
