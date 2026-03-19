@@ -83,7 +83,7 @@ LongMemEval Harness
   return opts;
 }
 
-// ── Anthropic API Key ───────────────────────────────────────────────────────
+// ── API Key Loading ─────────────────────────────────────────────────────────
 function getAnthropicKey() {
   if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
   const envFile = join(process.env.HOME || "~", ".env.anthropic");
@@ -93,6 +93,24 @@ function getAnthropicKey() {
     if (match) return match[1].trim();
   }
   throw new Error("No ANTHROPIC_API_KEY found in env or ~/.env.anthropic");
+}
+
+function getGroqKey() {
+  if (process.env.GROQ_API_KEY) return process.env.GROQ_API_KEY;
+  const envFile = join(process.env.HOME || "~", ".env.groq");
+  if (existsSync(envFile)) {
+    const content = readFileSync(envFile, "utf8");
+    const match = content.match(/GROQ_API_KEY=(.+)/);
+    if (match) return match[1].trim();
+  }
+  throw new Error("No GROQ_API_KEY found in env or ~/.env.groq");
+}
+
+function detectProvider(model) {
+  if (model.startsWith("claude")) return "anthropic";
+  if (model.startsWith("llama") || model.startsWith("meta-llama") || model.startsWith("qwen") || model.startsWith("openai/gpt-oss") || model.startsWith("moonshotai")) return "groq";
+  // Default to groq for unknown models (try it)
+  return "groq";
 }
 
 // ── Schema ──────────────────────────────────────────────────────────────────
@@ -262,7 +280,57 @@ function searchWithPipeline(dbPath, query, opts, questionDate) {
   }
 }
 
-// ── Anthropic API ───────────────────────────────────────────────────────────
+// ── LLM API (Anthropic + Groq) ──────────────────────────────────────────────
+async function callGroq(apiKey, model, system, userMessage) {
+  const maxRetries = 3;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 512,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: userMessage },
+          ],
+        }),
+      });
+
+      if (res.status === 429) {
+        const retryAfter = parseInt(res.headers.get("retry-after") || "10", 10);
+        console.log(`  Rate limited, waiting ${retryAfter}s...`);
+        await sleep(retryAfter * 1000);
+        continue;
+      }
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Groq API error ${res.status}: ${body}`);
+      }
+
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content || "";
+    } catch (err) {
+      if (attempt < maxRetries - 1) {
+        console.log(`  API error (attempt ${attempt + 1}): ${err.message}, retrying...`);
+        await sleep(2000 * (attempt + 1));
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
+async function callLLM(provider, apiKey, model, system, userMessage) {
+  if (provider === "groq") return callGroq(apiKey, model, system, userMessage);
+  return callAnthropic(apiKey, model, system, userMessage);
+}
+
 async function callAnthropic(apiKey, model, system, userMessage) {
   const maxRetries = 3;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -314,9 +382,11 @@ function sleep(ms) {
 // ── Main ────────────────────────────────────────────────────────────────────
 async function main() {
   const opts = parseArgs();
-  const apiKey = getAnthropicKey();
   const model = opts.model || process.env.EVAL_MODEL || "claude-opus-4-6";
+  const provider = detectProvider(model);
+  const apiKey = provider === "groq" ? getGroqKey() : getAnthropicKey();
   const outputFile = opts.output || `hypotheses-${opts.dataset}.jsonl`;
+  console.log(`Provider: ${provider}`);
 
   // Load dataset
   const dataFile =
@@ -423,7 +493,7 @@ async function main() {
         "You are answering questions about past conversations. Use the provided context to answer accurately and concisely.";
       const userPrompt = `Context:\n${context}\n\nQuestion: ${q.question}\n\nAnswer concisely based on the context. If the information isn't in the context, say 'I don't have that information.'`;
 
-      const hypothesis = await callAnthropic(apiKey, model, systemPrompt, userPrompt);
+      const hypothesis = await callLLM(provider, apiKey, model, systemPrompt, userPrompt);
 
       // 7. Append to JSONL
       const entry = {
